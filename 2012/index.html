@@ -1,0 +1,302 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Hyvää Joulua!</title>
+    
+    <style type="text/css">
+    html, body, #canvas {
+        width:  100%;
+        height: 100%;
+        margin: 0px;
+        background: white;
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;         /* Firefox */
+        image-rendering: -o-crisp-edges;         /* Opera */
+        image-rendering: -webkit-optimize-contrast;/* Webkit (non-standard naming) */
+        image-rendering: crisp-edges;
+        -ms-interpolation-mode: nearest-neighbor;  /* IE (non-standard property) */
+    }
+    </style>
+    
+    <script type="text/javascript">
+    var text = getURLParameter('text') || "Pärisevää Joulua!";
+    var canvas;
+    var ctx;
+    var drawers = [];
+    
+    var treeLevels = getURLParameter('treeLevels') || 2;
+    var treeTop = new Point(100, 100);
+    
+    window.onload = function() {
+        init();
+        if (ctx) {
+            draw();
+            window.setInterval(redraw, 50);
+        }
+    }
+    
+    function init() {
+        var ratio = ((document.width ||document.body.clientWidth)/
+                     (document.height||document.body.clientHeight));
+        
+        canvas = document.getElementById('canvas');
+        canvas.height = 600;
+        canvas.width = canvas.height*ratio;
+        canvasW = canvas.width;
+        canvasH = canvas.height;
+        
+        treeTop = new Point(canvas.width/2, canvas.height-((100*treeLevels) + 150));
+        
+        if (canvas && canvas.getContext) {
+            ctx = canvas.getContext('2d');
+        }
+    }
+    
+    function draw() {
+        clear(getURLParameter('clearColor') || 'rgb(255,255,255)');
+        
+        addDimmer(getURLParameter('dimColor') || 'rgba(255,255,255,0.05)');
+        addText(getURLParameter('textColor') || 'rgba(255,100,120,0.4)');
+        addStar(getURLParameter('starColor') || 'rgba(235,242,36,0.2)');
+        addTree(getURLParameter('treeColor') || 'rgba(240,60,180,0.2)');
+        addSillySnakes(getURLParameter('snakeColor') || 'rgba(180,160,120,0.2)');
+        addSillySnakes(getURLParameter('snakeColor') || 'rgba(180,120,160,0.2)');
+        addMovingBox(getURLParameter('boxColor') || 'rgba(74,151,237,0.3)');
+        addMovingBox(getURLParameter('boxColor') || 'rgba(76,162,241,0.31)');
+        addMovingBox(getURLParameter('boxColor') || 'rgba(87,158,239,0.25)');
+        addMovingBox(getURLParameter('boxColor') || 'rgba(72,145,231,0.26)');
+        addMovingBox(getURLParameter('boxColor') || 'rgba(75,155,248,0.28)');
+        addFace(getURLParameter('faceColor') || 'rgba(0,0,0,0.05)');
+        
+        redraw();
+    }
+    
+    function redraw() {
+        for (var i = 0 ; i < drawers.length ; i++) {
+            drawers[i]();
+        }
+    }
+    
+    function clear(color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(0,0,canvas.width, canvas.height)
+    }
+    
+    function addDimmer(color) {
+        drawers.push(function(){
+            ctx.fillStyle = color;
+            ctx.fillRect(0,0,canvas.width, canvas.height)
+        });
+    }
+    
+    function addTree(color) {
+        drawers.push(function() {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            
+            ctx.moveTo(treeTop.x+shake(), treeTop.y+shake());
+            // Right side down!
+            var i;
+            for (i = 1 ; i <= treeLevels ; i++) {
+                ctx.lineTo(treeTop.x+(70*i)+shake(), treeTop.y+(100*i)+shake());
+                ctx.lineTo(treeTop.x+(30*i)+shake(), treeTop.y+(100*i)+shake());
+            }
+        
+            ctx.lineTo(treeTop.x+25+shake(), treeTop.y+(100*treeLevels)+shake());
+            ctx.lineTo(treeTop.x+40+shake(), treeTop.y+(100*treeLevels)+50+shake());
+            ctx.lineTo(treeTop.x-40+shake(), treeTop.y+(100*treeLevels)+50+shake());
+            ctx.lineTo(treeTop.x-25+shake(), treeTop.y+(100*treeLevels)+shake());
+        
+            // Left side up!
+            for (i--; i >= 0 ; i--) {
+                ctx.lineTo(treeTop.x-(30*i)+shake(), treeTop.y+(100*i)+shake());
+                ctx.lineTo(treeTop.x-(70*i)+shake(), treeTop.y+(100*i)+shake());
+            }
+        
+            ctx.lineTo(treeTop.x+shake(), treeTop.y+shake());
+            ctx.stroke();
+            ctx.closePath();
+        });
+    }
+        
+    function addStar(color) {
+        var starRotation = Math.random()*2*Math.PI;
+        var starRadius = 40;
+        
+        drawers.push(function() {
+            // Draw star
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.translate(treeTop.x + blur(), treeTop.y + blur());
+            ctx.rotate(starRotation);
+            ctx.moveTo(0, starRadius);
+            for (i = 0 ; i < 5 ; i++) {
+                ctx.rotate(Math.PI*2/10);
+                ctx.lineTo(0,starRadius/2);
+                ctx.rotate(Math.PI*2/10);
+                ctx.lineTo(0,starRadius);
+            }
+            starRotation += jitter()/3;
+            ctx.lineTo(0, starRadius);
+            
+            ctx.stroke();
+            ctx.closePath();
+            ctx.restore();
+        });
+    }
+    
+    function addMovingBox(color) {
+        var position = new Point(Math.random()*canvas.width, Math.random()*canvas.height);
+        var size = 20;
+        var speed = 5;
+        var direction = Math.random()*2*Math.PI;
+        var rotation = Math.random()*2*Math.PI;
+
+        drawers.push(function() {
+            // Draw
+            ctx.save();
+            ctx.translate(position.x, position.y);
+            ctx.rotate(rotation);
+            ctx.strokeStyle = color;
+            ctx.strokeRect(-size/2, -size/2, size, size);
+            ctx.restore();
+            
+            // Update
+            position.x += speed*Math.sin(direction);
+            position.y += speed*Math.cos(direction);
+            direction += jitter();
+            
+            // Dodge edges
+            direction += Math.abs(Math.PI*3/2-direction)/(Math.max(1,canvas.width-position.x));
+            direction += Math.abs(Math.PI/2-direction)/(Math.max(1,position.x));
+            direction += Math.abs(-direction)/(Math.max(1,position.y));
+            direction += Math.abs(Math.PI-direction)/(Math.max(1,canvas.height-position.y));
+            direction %= Math.PI*2;
+            
+            size = Math.max(1,size+jitter()*3);
+            speed += jitter()*0.2;
+            rotation += jitter()*0.3;
+        });
+    }
+    
+    function addSillySnakes(color) {
+        drawers.push(function() {
+            ctx.strokeStyle = color;
+        
+            var a = new Point(Math.random()*canvas.width, Math.random()*canvas.height);
+            var b = new Point(Math.random()*canvas.width, Math.random()*canvas.height);
+        
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            var point = new Point(a.x, a.y);
+            var horizontal = Math.random() < 0.5;
+            var dirHorizontal = (point.x < b.x ? 1 : -1);
+            var dirVertical = (point.y < b.y ? 1 : -1);
+                while (true) {
+                var distance = Math.random()*30 + 10;
+                if (horizontal) {
+                    point.x += distance * dirHorizontal;
+                    horizontal = false;
+                } else {
+                    point.y += distance * dirVertical;
+                    horizontal = true;
+                }
+                ctx.lineTo(point.x, point.y);
+                if (!between(point.y, a.y, b.y) && 
+                    !between(point.x, a.x, b.x)) {
+                        break;
+                }
+            }
+            ctx.stroke();
+            ctx.closePath();
+        });
+    }
+    
+    function addText(color) {
+        var point = new Point(canvas.width/2, 150);
+        
+        ctx.font = 'bold 92px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        drawers.push(function() {
+            ctx.save();
+            ctx.transform(1+vibrate(), 0+vibrate(), 
+                          0+vibrate(), 1+vibrate(), 
+                          0+jitter(),0+jitter());
+            ctx.strokeStyle = color;
+            ctx.strokeText(text, point.x, point.y, canvas.width-10);
+            ctx.restore();
+        });
+    }
+    
+    function addFace(color) {
+        var point = new Point(canvas.width-50, canvas.height-50);
+        
+        drawers.push(function() {
+            ctx.save();
+            ctx.translate(point.x, point.y);
+            ctx.rotate(jitter());
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            // Mouth
+            ctx.arc(blur(), blur(), 20+blur(), Math.PI/3, Math.PI*2/3, false);
+            // Left eye
+            ctx.moveTo(-15, -10);
+            ctx.arc(-15+blur(), -10+blur(), 3+blur(), 0, Math.PI*2, false);
+            // Right eye
+            ctx.moveTo(15, -10);
+            ctx.arc(15+blur(), -10+blur(), 3+blur(), 0, Math.PI*2, false);
+            ctx.moveTo(35, 0);
+            ctx.arc(blur(), blur(), 35+blur(), 0, Math.PI*2, false);
+            
+            // Finish
+            ctx.stroke();
+            ctx.closePath();
+            ctx.restore();
+        });
+    }
+    /* Randomize functions */
+    function shake() {
+        return jitter()*10;
+    }
+    
+    function blur() {
+        return jitter()*5;
+    }
+    
+    function jitter() {
+        return (Math.random()-0.5);
+    }
+    
+    function vibrate() {
+        return jitter()/40;
+    }
+    
+    /* Helper functions */
+    function between(p, a, b) {
+        return (a < b) ? (a < p && p < b) : (b < p && p < a);
+    }
+    
+    function getURLParameter(name) {
+        var string = RegExp(name + '=' + '(.+?)(&|$)').exec(location.search);
+        if (string) {
+            return decodeURI(string[1]);
+        } else {
+            return null;
+        }
+    }
+    
+    /* Helper classes */
+    function Point(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+    </script>
+</head>
+
+<body>
+    <canvas id="canvas">Where is your canvas now?</canvas>
+</body>
+</html>

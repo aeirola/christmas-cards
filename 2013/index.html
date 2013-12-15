@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+	<title>Hyvää joulua - 2013</title>
+
+	<style type="text/css">
+		html, body {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			overflow: hidden;
+		}
+		.mask {
+			width: 100%;
+			height: 100%;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			position: absolute;
+			color: white;
+			z-index: 10;
+		}
+
+		.mask text {
+			font-family: Times, "Times New Roman", Georgia, serif;
+			font-family: monospace;
+			font-weight: 900;
+			font-size: 15px;
+		}
+
+		.mask text.heart {
+			font-size: 20px;
+		}
+
+		.bg {
+			clear:none;
+			float:left;
+			background-color: rgba(255, 0, 0, 0.2);
+			box-shadow: 0 0 1em rgba(255, 0, 0, 0.5);
+		}
+
+		@-webkit-keyframes spin {
+		    from { -webkit-transform: rotate(0deg); }
+		    to { -webkit-transform: rotate(360deg); }
+		}
+		@-moz-keyframes spin {
+		    from { -moz-transform: rotate(0deg); }
+		    to { -moz-transform: rotate(360deg); }
+		}
+		@keyframes spin {
+		    from { transform: rotate(0deg); }
+		    to { transform: rotate(360deg); }
+		}
+		.grid {
+			width: 50px;
+			height: 50px;
+			-webkit-animation-name: spin;
+			-webkit-animation-duration: 10000ms;
+			-webkit-animation-iteration-count: infinite;
+			-webkit-animation-timing-function: linear;
+			-moz-animation-name: spin;
+			-moz-animation-duration: 10000ms;
+			-moz-animation-iteration-count: infinite;
+			-moz-animation-timing-function: linear;
+			animation-name: spin;
+			animation-duration: 10000ms;
+			animation-iteration-count: infinite;
+			animation-timing-function: linear;
+		}
+
+		@-webkit-keyframes scale {
+		    from { -webkit-transform: scale(1.4); }
+		    to { -webkit-transform: scale(2); }
+		}
+		@-moz-keyframes scale {
+		    from { -moz-transform: scale(1.4); }
+		    to { -moz-transform: scale(2); }
+		}
+		@keyframes scale {
+		    from { transform: scale(1.4); }
+		    to { transform: scale(2); }
+		}
+		.ball {
+			border-radius: 50%;
+			width: 100px;
+			height: 100px;
+
+			-webkit-animation-name: scale;
+			-webkit-animation-duration: 1000ms;
+			-webkit-animation-iteration-count: infinite;
+			-webkit-animation-timing-function: ease-in-out;
+			-webkit-animation-direction: alternate;
+			-moz-animation-name: scale;
+			-moz-animation-duration: 1000ms;
+			-moz-animation-iteration-count: infinite;
+			-moz-animation-timing-function: ease-in-out;
+			-moz-animation-direction: alternate;
+			animation-name: scale;
+			animation-duration: 1000ms;
+			animation-iteration-count: infinite;
+			animation-timing-function: ease-in-out;
+			animation-direction: alternate;
+		}
+	</style>
+
+	<script type="text/javascript">
+		var backgrounds = {
+			grid: function() {
+				for (var i = 0 ; i < 500 ; i++) {
+					var elem = document.createElement('div');
+					elem.className = "bg grid";
+					document.body.appendChild(elem)
+				}
+			},
+			balls: function() {
+				for (var i = 0 ; i < 250 ; i++) {
+					var div = document.createElement('div');
+					div.className = "bg ball";
+					document.body.appendChild(div)
+				}
+			}
+		}
+
+		window.onload = function() {
+			var keys = Object.keys(backgrounds);
+			var bg = keys[Math.floor(Math.random() * keys.length)];
+			backgrounds[bg]();
+		}
+	</script>
+</head>
+<body>
+	<svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
+		viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"
+		class="mask">
+
+		<defs>
+			<filter id="blur">
+				<feGaussianBlur stdDeviation="0.4"/>
+			</filter>
+			<mask id="mask">
+				<rect x="0" y="0" width="100" height="100" fill="white" />
+				<g filter="url(#blur)">
+					<text x="10%" y="40%" class="line1">pörr&hellip;</text>
+					<text x="50%" y="55%" class="line2">&hellip;joul</text>
+					<text x="15%" y="70%" class="heart">&hearts;</text>
+				</g>
+			</mask>
+		</defs>
+		<rect x="0" y="0" width="100" height="100" mask="url(#mask)" fill="white" />
+	</svg>
+</body>
+</html>

@@ -124,6 +124,11 @@
 		}
 
 		window.onload = function() {
+			if (navigator.userAgent.indexOf('Firefox') != -1) {
+				/* Firefox doesn't handle filters on masks */
+				document.getElementById('group').removeAttribute('filter');
+			}
+
 			var keys = Object.keys(backgrounds);
 			var bg = keys[Math.floor(Math.random() * keys.length)];
 			backgrounds[bg]();
@@ -134,14 +139,13 @@
 	<svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
 		viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice"
 		class="mask">
-
 		<defs>
 			<filter id="blur">
 				<feGaussianBlur stdDeviation="0.4"/>
 			</filter>
 			<mask id="mask">
 				<rect x="0" y="0" width="100" height="100" fill="white" />
-				<g filter="url(#blur)">
+				<g id="group" filter="url(#blur)">
 					<text x="10%" y="40%" class="line1">pörr&hellip;</text>
 					<text x="50%" y="55%" class="line2">&hellip;joul</text>
 					<text x="15%" y="70%" class="heart">&hearts;</text>

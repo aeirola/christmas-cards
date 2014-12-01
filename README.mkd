@@ -1,0 +1,4 @@
+HTML5 Christmas cards
+=====================
+
+Every year I play around with some new HTML5 technologies to make a Christmas card. The common theme is that the card should only consist of one HTML file, without linking to *any* external resources.

@@ -1,0 +1,5 @@
+deploy:
+  provider: divshot
+  api_key:
+    secure: ew+aUracCUtYYIKh7/9oqrkwPVJypZAni/o2CrAjIC/7wbUBYD7y+gRk8KK0L0hL9ze6KwTKWmQMBslr72m3JT7l9XU0GvNTQkF1B7bAZ/5zPzfuZp/9FUuHDNBzM2UxH0trWFB9/CYWfzeaZI0Jykj8kG7f6Zb1xWv10P+W4rg=
+  environment: production

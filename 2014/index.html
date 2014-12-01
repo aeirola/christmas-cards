@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Joulukortti 2014</title>
+
+	<!--
+	Well, hello there!
+
+	Find more christmas cards, or fork this one, on GitHub at https://github.com/aeirola/christmas-cards
+
+	t. Axel
+
+	Music is most likely copyrighted by Taito Corporation
+	-->
+
+	<style type="text/css">
+		html, body {
+			border: 0;
+			margin: 0;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+
+			font-family: sans-serif;
+			font-weight: bold;
+			font-style: uppercase;
+			font-size: 50px;
+		}
+
+		body {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			display: -moz-flex;
+			-moz-align-items: center;
+			-moz-justify-content: center;
+			display: -webkit-flex;
+			-webkit-align-items: center;
+			-webkit-justify-content: center;
+		}
+
+		div.box {
+			padding: 10px;
+			float: left;
+			width: 50px;
+			height: 50px;
+			opacity: 0.75;
+			transition: background 1s;
+			text-align: center;
+		}
+
+		div.text {
+			position: absolute;
+			top: 30%;
+			left: -400px;
+			transition: all 1.5s;
+			transition-timing-function: ease-out;
+		}
+
+		div.text.visible {
+			left: 20%;
+		}
+
+		div.text div.letter {
+			display: inline;
+			padding: 0;
+			margin: 0;
+		}
+
+		div.drop {
+			position: absolute;
+			height: 100px;
+			width: 100px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			display: -moz-flex;
+			-moz-align-items: center;
+			-moz-justify-content: center;
+			display: -webkit-flex;
+			-webkit-align-items: center;
+			-webkit-justify-content: center;
+		}
+
+		div.drop.hidden {
+			display: none;
+		}
+
+		div.drop div {
+			height: 10px;
+			width: 10px;
+			border-radius: 100%;
+			transition: all 1s;
+			transition-timing-function: ease-out;
+		}
+
+		div.drop.grow div {
+			height: 100%;
+			width: 100%;
+			border-radius: 50%;
+			opacity: 0;
+			filter: blur(20px);
+			-moz-filter: blur(20px);
+			-webkit-filter: blur(20px);
+		}
+
+		div.drop.red div {background-color: red; border-color: red;}
+		div.drop.orange div {background-color: orange; border-color: orange;}
+		div.drop.yellow div {background-color: yellow; border-color: yellow;}
+		div.drop.green div {background-color: green; border-color: green;}
+		div.drop.blue div {background-color: blue; border-color: blue;}
+		div.drop.purple div {background-color: purple; border-color: purple;}
+
+
+		div.box.red {background-color: red; color: red;}
+		div.box.orange {background-color: orange; color: orange;}
+		div.box.yellow {background-color: yellow; color: yellow;}
+		div.box.green {background-color: green; color: green;}
+		div.box.blue {background-color: blue; color: blue;}
+		div.box.purple {background-color: purple; color: purple;}
+	</style>
+
+	<script type="text/javascript">
+		"use strict";
+
+		// Geometry tracking
+		var windowX, windowY;
+		var mouseX = 0, mouseY = 0;
+		var centerX = 0.75, centerY = 0.3;
+
+		// Misc
+		var found = false;
+		var boxes, letters, drops;
+		var colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
+
+		// Prepare audio
+		var ctx = new(window.AudioContext || window.webkitAudioContext);
+
+		// Generate frequencies form piano keys
+		var octave = [ 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+		var frequencies = {null: null};
+		for (var i = 1 ; i < 89 ; i++) {
+			var frequency = Math.pow(2, ((i-57.0)/12.0))*440.0;
+			var note = octave[i % octave.length] + (Math.floor(i/octave.length));
+			frequencies[note] = frequency;
+		}
+		var beatCounter = 0, dropCounter = 0;
+
+		window.onload = function() {
+			boxes = document.getElementsByClassName("box");
+			letters = document.getElementsByClassName("letter");
+			drops = document.getElementsByClassName('drop');
+			window.onresize();
+		};
+
+		// Track resizing events
+		window.onresize = function() {
+			windowX = window.innerWidth || document.body.clientWidth;
+			windowY = window.innerHeight || document.body.clientWidth;
+
+			if (found) {
+				return;
+			}
+
+			mouseX = Math.min(windowX, mouseX);
+			mouseY = Math.min(windowY, mouseY);
+			drawBoxes();
+		};
+
+		// Track mouse movement
+		window.onmousemove = function(event) {
+			if (found) {
+				return;
+			}
+			event = event || window.event
+
+			mouseX = event.pageX;
+			mouseY = event.pageY;
+			drawBoxes();
+
+			if (!found && Math.abs(mouseX - centerX*windowX) < 1 && Math.abs(mouseY - centerY*windowY) < 1) {
+				found = true;
+				magic();
+			}
+		};
+
+		// Track touch movement, poorly
+		window.ontouchmove = function(event) {
+			if (found) {
+				return;
+			}
+			event = event || window.event
+
+			mouseX = event.touches[0].pageX;
+			mouseY = event.touches[0].pageY;
+			drawBoxes();
+
+			if (!found && Math.abs(mouseX - centerX*windowX) < 1 && Math.abs(mouseY - centerY*windowY) < 1) {
+				found = true;
+				magic();
+			}
+		};
+
+		// Redraw box styles
+		function drawBoxes() {
+			var x = mouseX / windowX - centerX;
+			var y = mouseY / windowY - centerY;
+
+			var transform, filter, style;
+			var scale, translate, skew, rotate;
+
+			// Rotater
+			style = boxes[0].style;
+			transform = 'rotate('+x*360+'deg) translate('+(y*windowX)+'px, '+(y*windowY)+'px)';
+			style.transform = transform;
+			style.mozTransform = transform;
+			style.webkitTransform = transform;
+
+			filter = 'grayscale('+(Math.abs(x)+Math.abs(y))*200+'%)';
+			style.filter = filter;
+			style.mozFilter = filter;
+			style.webkitFilter = filter;
+
+			// Traveler
+			style = boxes[1].style;
+			transform = 'translate('+(-y*windowX)+'px,'+(-x*windowY)+'px) rotate(' + (2*x*y) + 'rad)';
+			style.transform = transform;
+			style.mozTransform = transform;
+			style.webkitTransform = transform;
+
+			filter = 'hue-rotate('+Math.abs((x+y)*200)+'deg)';
+			style.filter = filter;
+			style.mozFilter = filter;
+			style.webkitFilter = filter;
+
+			// Zoomer
+			style = boxes[2].style;
+			scale = 'scale('+0.75/Math.abs(y+0.75)+')';
+			translate = 'translate('+Math.sin(x*10)*y*windowX/2+'px,'+1.5*x*windowY+'px)';
+			skew = 'skew('+x*90+'deg,'+y*90+'deg)';
+			transform = translate + ' ' + scale + ' ' + skew;
+			style.transform = transform;
+			style.mozTransform = transform;
+			style.webkitTransform = transform;
+
+			// Colorer
+			style = boxes[3].style;
+			transform = 'rotate('+((y+x)*-180)+'deg)';
+			style.transform = transform;
+			style.mozTransform = transform;
+			style.webkitTransform = transform;
+
+			filter = 'grayscale('+(Math.abs(x)+Math.abs(y))*200+'%)';
+			style.filter = filter;
+			style.mozFilter = filter;
+			style.webkitFilter = filter;
+
+			style.borderRadius = (Math.abs(x)*100)+'px ' + (Math.abs(y)*100) + 'px';
+
+			// Filter
+			style = boxes[4].style;
+			translate = 'translate('+x*2*windowX+'px,'+y*2*windowY+'px)';
+			transform = translate;
+			style.transform = transform;
+			style.mozTransform = transform;
+			style.webkitTransform = transform;
+
+			filter = 'blur('+Math.min(20, Math.abs(x*100))+'px)';
+			style.filter = filter;
+			style.mozFilter = filter;
+			style.webkitFilter = filter;
+			style.opacity = Math.max(0, 1-Math.abs(x)*3-Math.abs(y)*3);
+
+			// Orbiter
+			style = boxes[5].style;
+			translate = 'translate('+(Math.sin(-x*10))*windowX/10+'px, '+(1-Math.cos(x*10))*windowX/10+'px)';
+			rotate = 'rotate('+y*360+'deg)';
+			transform = translate + ' ' + rotate;
+			style.transform = transform;
+			style.mozTransform = transform;
+			style.webkitTransform = transform;
+
+			filter = 'grayscale('+Math.abs(x)*200+'%)';
+			style.filter = filter;
+			style.mozFilter = filter;
+			style.webkitFilter = filter;
+
+			style.opacity = Math.abs(1-y);
+		};
+
+		function magic() {
+			revealBoxes();
+			enterText();
+			drop(mouseX, mouseY, 'red', 200);
+			setTimeout(playMusic, 2000);
+		};
+
+		// Reveal box contents
+		function revealBoxes() {
+			var revealBox = function(box) {
+				return function() {
+					box.style['background'] = 'none'
+				}
+			};
+
+			for (var i = 0 ; i < boxes.length ; i++) {
+				setTimeout(revealBox(boxes[i]), i*200);
+			}
+		};
+
+		// Enter effects
+		function enterText() {
+			var texts = document.getElementsByClassName("text");
+			for (var i = 0 ; i < texts.length ; i++) {
+				texts[i].className += " visible";
+			}
+		};
+
+		// Drop a random
+		function drip(i) {
+			var color = colors[i % colors.length];
+			drop(Math.random()*windowX, Math.random()*windowY, color);
+		}
+
+		// Drop at given location
+		function drop(x, y, color, size) {
+			size = size || 100;
+			var drop = drops[dropCounter];
+			dropCounter = (dropCounter + 1) % drops.length;
+			drop.className = 'drop ' + color;
+			drop.style.top = (y-size/2) + 'px';
+			drop.style.left = (x-size/2) + 'px';
+			drop.style.height = size + 'px';
+			drop.style.width = size + 'px';
+			setTimeout(function() {drop.className +=' grow'}, 50);
+			setTimeout(function() {drop.className += ' hidden'}, 1000);
+		};
+
+		function bump(i, d, h) {
+			var box = boxes[i % boxes.length];
+			box.style.transition = 'all 0.1s';
+			var transform = 'translate(0px, -' + h + 'px)';
+			box.style.transform = transform;
+			box.style.mozTransform = transform;
+			box.style.webkitTransform = transform;
+			setTimeout(function() {
+				box.style.transform = '';
+				box.style.mozTransform = '';
+				box.style.webkitTransform = ''}, d);
+		};
+
+		function buzz(note) {
+			var amount = Math.max(3, Math.min(20, (150 - frequencies[note['n']]) / 10))
+			var filter = 'blur(' + amount + 'px)';
+
+			for (var i = 0 ; i < note['d']*8; i++) {
+				var text = letters[beatCounter % letters.length];
+				beatCounter = (beatCounter+1) % letters.length;
+
+				text.style.filter = filter;
+				text.style.mozFilter = filter;
+				text.style.webkitFilter = filter;
+				text.style.transition = 'all 0.1s';
+				setTimeout(function(element) {
+					element.style.filter = '';
+					element.style.mozFilter = '';
+					element.style.webkitFilter = ''}, 100, text);
+			}
+		}
+
+		// Commence orchestra
+		function playMusic() {
+			// Main melody
+			playTrack([
+				{'n': 'A#5', 'd': 1/8}, {'n': 'A5', 'd': 1/8}, {'n': 'G5', 'd': 1/8+1/16}, {'n': 'F5', 'd': 1/16},
+				{'n': 'A5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'D#5', 'd': 1/8},
+
+				{'n': 'G5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'D#5', 'd': 1/16}, {'n': 'D5', 'd': 1/8+1/16},
+				{'n': 'F5', 'd': 1/4+1/8}, {'n': 'D5', 'd': 1/16}, {'n': 'C5', 'd': 1/16},
+
+				{'n': 'A#4', 'd': 1/8}, {'n': 'C5', 'd': 1/8}, {'n': 'D5', 'd': 1/8}, {'n': 'D#5', 'd': 1/8},
+				{'n': 'C5', 'd': 1/8}, {'n': 'D5', 'd': 1/16}, {'n': 'D#5', 'd': 1/8+1/16}, {'n': 'F5', 'd': 1/8},
+
+				{'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/16}, {'n': 'G5', 'd': 1/8+1/16},
+				{'n': 'F5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+				//---------------
+				{'n': 'A#5', 'd': 1/8}, {'n': 'A5', 'd': 1/8}, {'n': 'G5', 'd': 1/8+1/16}, {'n': 'F5', 'd': 1/16},
+				{'n': 'A5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'F5', 'd': 1/16}, {'n': 'D#5', 'd': 1/8+1/16},
+
+				{'n': 'G5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'D#5', 'd': 1/16}, {'n': 'D5', 'd': 1/8+1/16},
+				{'n': 'F5', 'd': 1/4+1/8}, {'n': 'D5', 'd': 1/16}, {'n': 'C5', 'd': 1/16},
+
+				{'n': 'A#4', 'd': 1/8}, {'n': 'C5', 'd': 1/8}, {'n': 'D5', 'd': 1/8}, {'n': 'D#5', 'd': 1/8},
+				{'n': 'C5', 'd': 1/8}, {'n': 'D5', 'd': 1/16}, {'n': 'D#5', 'd': 1/8+1/16}, {'n': 'F5', 'd': 1/8},
+
+				{'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/16}, {'n': 'F5', 'd': 1/8+1/16},
+				{'n': 'A#5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'G#5', 'd': 1/8},
+				//---------------
+				{'n': 'A5', 'd': 1/2},
+				{'n': 'A5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+
+				{'n': 'A#5', 'd': 1/2},
+				{'n': 'A#5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+
+				{'n': 'C6', 'd': 1/2},
+				{'n': 'C6', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+
+				{'n': 'D6', 'd': 1/2},
+				{'n': 'D6', 'd': 1/8}, {'n': 'A#6', 'd': 1/8}, {'n': 'C6', 'd': 1/8}, {'n': 'D6', 'd': 1/8},
+				//---------------
+				{'n': 'D#6', 'd': 1/8}, {'n': 'D#6', 'd': 1/4},
+				{'n': 'D#6', 'd': 1/8+1/8}, {'n': 'D6', 'd': 1/8}, {'n': 'C6', 'd': 1/4},
+
+				{'n': 'D6', 'd': 1/2+1/4},
+				{'n': 'D6', 'd': 1/4},
+
+				{'n': 'C6', 'd': 1/4+1/8}, {'n': 'G5', 'd': 1/8+1/8},
+				{'n': 'G5', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'D6', 'd': 1/8},
+
+				{'n': 'C6', 'd': 1/2+1/8},
+				{'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'G#5', 'd': 1/8},
+				//---------------
+				{'n': 'A5', 'd': 1/2},
+				{'n': 'A5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+
+				{'n': 'A#5', 'd': 1/2},
+				{'n': 'A#5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+
+				{'n': 'C6', 'd': 1/2},
+				{'n': 'C6', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+
+				{'n': 'D6', 'd': 1/2},
+				{'n': 'D6', 'd': 1/8}, {'n': 'A#6', 'd': 1/8}, {'n': 'C6', 'd': 1/8}, {'n': 'D6', 'd': 1/8},
+				//---------------
+				{'n': 'D#6', 'd': 1/8}, {'n': 'D#6', 'd': 1/4},
+				{'n': 'D#6', 'd': 1/8+1/8}, {'n': 'D6', 'd': 1/8}, {'n': 'C6', 'd': 1/4},
+
+				{'n': 'D6', 'd': 1/2+1/4},
+				{'n': 'D6', 'd': 1/4},
+
+				{'n': 'C6', 'd': 1/4+1/8}, {'n': 'F5', 'd': 1/8+1/8},
+				{'n': 'G5', 'd': 1/8}, {'n': 'F5', 'd': 1/8}, {'n': 'D6', 'd': 1/8},
+
+				{'n': 'A#5', 'd': 1/2+1/8},
+				{'n': 'F5', 'd': 1/8}, {'n': 'G5', 'd': 1/8}, {'n': 'A5', 'd': 1/8},
+			], {
+				'type': 'triangle',
+				'volume': 0.1,
+				'noteKeep': 0.7,
+				'callback': function(note) {
+					var i = octave.indexOf(note['n'].replace(/[0-9]/, '')) % boxes.length;
+					bump(i, 2000/2*note['d'], 25);
+					drip(i);
+				}
+			});
+
+
+			// Highs
+			playTrack([
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				//---------------
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				//---------------
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'G#6', 'd': 1/8},
+				{'n': 'A6', 'd': 1/2},
+
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'A6', 'd': 1/8},
+				{'n': 'A#6', 'd': 1/2},
+
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'A6', 'd': 1/8},
+				{'n': 'C7', 'd': 1/2},
+
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'A6', 'd': 1/8},
+				{'n': 'D7', 'd': 1/2},
+				//---------------
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				//---------------
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'G#6', 'd': 1/8},
+				{'n': 'A6', 'd': 1/2},
+
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'A6', 'd': 1/8},
+				{'n': 'A#6', 'd': 1/2},
+
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'A6', 'd': 1/8},
+				{'n': 'C7', 'd': 1/2},
+
+				{'n': null, 'd': 1/8}, {'n': 'F6', 'd': 1/8}, {'n': 'G6', 'd': 1/8}, {'n': 'A6', 'd': 1/8},
+				{'n': 'D7', 'd': 1/2},
+				//---------------
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+				{'n': null, 'd': 1/1},
+			], {
+				'type': 'square',
+				'volume': 0.05,
+				'noteKeep': 0.9,
+				'callback': function(note) {
+					var i = octave.indexOf(note['n'].replace(/[0-9]/, '')) % boxes.length;
+					bump(i, 2000/2*note['d'], 50);
+					drip(i);
+				}
+			});
+
+			// Rhytm
+			playTrack([
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+				//---------------
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G#1', 'd': 1/8},
+				//---------------
+				{'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8}, {'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8},
+				{'n': 'A1', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'A1', 'd': 1/8},
+
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G#1', 'd': 1/8},
+
+				{'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8}, {'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8},
+				{'n': 'A1', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'A1', 'd': 1/8},
+
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'C2', 'd': 1/8}, {'n': 'D2', 'd': 1/8},
+				//---------------
+				{'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8}, {'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8},
+				{'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8}, {'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8},
+
+				{'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8}, {'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8},
+				{'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8}, {'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8},
+
+				{'n': 'C2', 'd': 1/8}, {'n': 'C3', 'd': 1/8}, {'n': 'C2', 'd': 1/8}, {'n': 'C3', 'd': 1/8},
+				{'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G2', 'd': 1/8},
+
+				{'n': 'C2', 'd': 1/8}, {'n': 'C3', 'd': 1/8}, {'n': 'C2', 'd': 1/8}, {'n': 'C3', 'd': 1/8},
+				{'n': 'C2', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G#1', 'd': 1/8},
+				//---------------
+				{'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8}, {'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8},
+				{'n': 'A1', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'A1', 'd': 1/8},
+
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'G#1', 'd': 1/8},
+
+				{'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8}, {'n': 'A1', 'd': 1/8}, {'n': 'A2', 'd': 1/8},
+				{'n': 'A1', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'A1', 'd': 1/8},
+
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'A#2', 'd': 1/8},
+				{'n': 'A#1', 'd': 1/8}, {'n': 'A#1', 'd': 1/8}, {'n': 'C2', 'd': 1/8}, {'n': 'D2', 'd': 1/8},
+				//---------------
+				{'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8}, {'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8},
+				{'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8}, {'n': 'D#2', 'd': 1/8}, {'n': 'D#3', 'd': 1/8},
+
+				{'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8}, {'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8},
+				{'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8}, {'n': 'D2', 'd': 1/8}, {'n': 'D3', 'd': 1/8},
+
+				{'n': 'C2', 'd': 1/8}, {'n': 'C3', 'd': 1/8}, {'n': 'C2', 'd': 1/8}, {'n': 'C3', 'd': 1/8},
+				{'n': 'F1', 'd': 1/8}, {'n': 'C2', 'd': 1/8}, {'n': 'F1', 'd': 1/8}, {'n': 'C2', 'd': 1/8},
+
+				{'n': 'A#1', 'd': 1/2+1/8},
+				{'n': 'F1', 'd': 1/8}, {'n': 'G1', 'd': 1/8}, {'n': 'A1', 'd': 1/8},
+			], {
+				'type': 'sawtooth',
+				'volume': 0.05,
+				'noteKeep': 0.5,
+				'callback': buzz
+			});
+		};
+
+		// Start single track, forever
+		var musicStartTime;
+		function playTrack(notes, settings) {
+			// Initialize instrument
+			var osc = ctx.createOscillator();
+			var gain = ctx.createGain();
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			musicStartTime = musicStartTime || ctx.currentTime;
+			var currentNoteTime = musicStartTime;
+
+			// Read settings
+			settings = settings || {};
+			var beatLength = settings.beatLength || 2000;
+			var noteKeep = settings.noteKeep || 0.5;
+			var volume = settings.volume || 0.1;
+			var callback = settings.callback || function() {};
+
+			osc.type = settings.type || 'sine';
+			gain.gain.value = 0;
+
+			// Fire up the oscillator
+			osc.start(0);
+
+			// Play a single note
+			var playNote = function(i) {
+				return function() {
+					// Schedule next note
+					var note = notes[i]['n'];
+					var noteDuration = beatLength*0.001*notes[i]['d'];
+					if (note) {
+						// Draw effect
+						callback(notes[i]);
+
+						// Set frequency
+						osc.frequency.setValueAtTime(frequencies[note], currentNoteTime);
+
+						// Raise volume
+						gain.gain.setValueAtTime(volume, currentNoteTime);
+
+						// Lower volume, time in seconds
+						gain.gain.linearRampToValueAtTime(0, currentNoteTime+noteDuration*noteKeep);
+					}
+
+					// Increase time for next note
+					currentNoteTime += noteDuration;
+
+					// On to the next one
+					setTimeout(playNote((i+1) % notes.length),
+							   (currentNoteTime-ctx.currentTime)*1000-10);
+				};
+			};
+
+			// ... and start from the top
+			playNote(0)();
+		};
+	</script>
+</head>
+
+<body>
+	<div class="text">
+		<div class="letter">p</div>
+		<div class="letter">a</div>
+		<div class="letter">r</div>
+		<div class="letter">a</div>
+		<div class="letter">s</div>
+		<div class="letter">t</div>
+		<div class="letter">a</div>
+		<div class="letter">,</div>
+	</div>
+
+	<div class="box red">j</div>
+	<div class="box orange">o</div>
+	<div class="box yellow">u</div>
+	<div class="box green">l</div>
+	<div class="box blue">u</div>
+	<div class="box purple">a</div>
+
+	<div id="drops">
+		<div class="drop"><div></div></div>
+		<div class="drop"><div></div></div>
+		<div class="drop"><div></div></div>
+		<div class="drop"><div></div></div>
+		<div class="drop"><div></div></div>
+		<div class="drop"><div></div></div>
+		<div class="drop"><div></div></div>
+		<div class="drop"><div></div></div>
+	</div>
+</body>
+</html>

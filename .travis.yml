@@ -1,3 +1,5 @@
+language: node_js
+script: echo "Nothing to build"
 deploy:
   provider: divshot
   api_key:

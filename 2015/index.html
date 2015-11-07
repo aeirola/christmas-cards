@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!--
+      Christmas greetins
+
+      Guidance and code skeleton from MDN WebGL tutorial.
+      Faster matrix operations provided by gl-matrix.
+      Inspiration from Finnish nature (and DeusEx).
+      Motivation from Rebekka.
+
+      - Axel
+    -->
+    <meta charset="utf-8">
+    <title>2015</title>
+
+    <!-- I usually don't include external resources,
+         but when I do they are hard-core math things -->
+    <script type="text/javascript" src="gl-matrix-min.js"></script>
+
+    <style media="screen">
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: black;
+      }
+
+      #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+      }
+
+      #error {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+
+        font-family: monospace;
+        color: white;
+        white-space: pre-line;
+      }
+
+      #text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+
+        color: #fd9;
+        text-shadow: 0 0 10px #eee;
+        font-size: 48px;
+        font-size: 12vw;
+        font-weight: bold;
+        letter-spacing: 0.2em;
+        font-family: "Futura-CondensedExtraBold", Futura, sans-serif;
+
+        opacity: 0;
+        transition: opacity 2s cubic-bezier(0,1,.7,0);
+      }
+
+      #text.on {
+        opacity: 1;
+      }
+    </style>
+
+    <script type="text/javascript">
+      'use strict';
+      // Some rendering context and state
+      var context = {
+            canvas: null,
+            gl: null
+          },
+          render = {
+            mvMatrix: null,
+            shaderProgram: null,
+            mvUniform: null,
+            nUniform: null,
+          },
+          objectState = {
+            lastCubeUpdateTime: null,
+            objects: []
+          };
+
+      // Some constants
+      var DISTANCE = 30,
+          SIZE = 30,
+          Z_SPREAD = 10,
+          ELEMENT_COUNT = 200,
+          FPS = 15;
+
+      function error(text) {
+        document.getElementById('error-message').textContent = text;
+        throw(text);
+      }
+      /*
+        Render initializations
+      */
+      function initContext() {
+        // Initialize gl context
+        context.canvas = document.getElementById('canvas');
+        context.gl = context.canvas.getContext('webgl') ||
+                     context.canvas.getContext('experimental-webgl');
+
+        // Check compatibility
+        if (!context.gl) {
+          error('WebGL not available :(\n' +
+                'Happy christmas anyways <3');
+        }
+
+        // Enable depth testing
+        context.gl.enable(context.gl.DEPTH_TEST);
+        // Near things obscure far things
+        context.gl.depthFunc(context.gl.LEQUAL);
+        // Clear the color as well as the depth buffer.
+        context.gl.clear(context.gl.COLOR_BUFFER_BIT | context.gl.DEPTH_BUFFER_BIT);
+      }
+
+      function getShader(id) {
+        var shaderScript = document.getElementById(id);
+        var source = document.getElementById(id).firstChild.textContent;
+        var shader;
+        if (shaderScript.type === 'x-shader/x-fragment') {
+          shader = context.gl.createShader(context.gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type === 'x-shader/x-vertex') {
+          shader = context.gl.createShader(context.gl.VERTEX_SHADER);
+        }
+        context.gl.shaderSource(shader, source);
+
+        // Compile the shader program
+        context.gl.compileShader(shader);
+
+        // See if it compiled successfully
+        if (!context.gl.getShaderParameter(shader, context.gl.COMPILE_STATUS)) {
+            error('An error occurred compiling the shaders: ' + context.gl.getShaderInfoLog(shader));
+        }
+
+        return shader;
+      }
+
+      function initRender() {
+        // Set up shaders
+        var fragmentShader = getShader('shader-fs');
+        var vertexShader = getShader('shader-vs');
+
+        render.shaderProgram = context.gl.createProgram();
+        context.gl.attachShader(render.shaderProgram, vertexShader);
+        context.gl.attachShader(render.shaderProgram, fragmentShader);
+        context.gl.linkProgram(render.shaderProgram);
+
+        if (!context.gl.getProgramParameter(render.shaderProgram, context.gl.LINK_STATUS)) {
+          error('Unable to initialize the shader program.');
+        }
+
+        context.gl.useProgram(render.shaderProgram);
+
+        render.mvUniform = context.gl.getUniformLocation(render.shaderProgram, 'uMVMatrix');
+        render.nUniform = context.gl.getUniformLocation(render.shaderProgram, 'uNormalMatrix');
+
+        // Create vertices
+        var vertices = [
+           1.0,  0.0, -1/Math.sqrt(2),
+          -1.0,  0.0, -1/Math.sqrt(2),
+           0.0,  1.0,  1/Math.sqrt(2),
+
+          -1.0,  0.0, -1/Math.sqrt(2),
+           1.0,  0.0, -1/Math.sqrt(2),
+           0.0, -1.0,  1/Math.sqrt(2),
+
+           1.0,  0.0, -1/Math.sqrt(2),
+           0.0,  1.0,  1/Math.sqrt(2),
+           0.0, -1.0,  1/Math.sqrt(2),
+
+          -1.0,  0.0, -1/Math.sqrt(2),
+           0.0, -1.0,  1/Math.sqrt(2),
+           0.0,  1.0,  1/Math.sqrt(2),
+        ];
+
+        var vertexPositionAttribute = context.gl.getAttribLocation(render.shaderProgram, 'aVertexPosition');
+        context.gl.enableVertexAttribArray(vertexPositionAttribute);
+
+        var cubeVerticesBuffer = context.gl.createBuffer();
+        context.gl.bindBuffer(context.gl.ARRAY_BUFFER, cubeVerticesBuffer);
+        context.gl.bufferData(context.gl.ARRAY_BUFFER, new Float32Array(vertices), context.gl.STATIC_DRAW);
+        context.gl.vertexAttribPointer(vertexPositionAttribute, 3, context.gl.FLOAT, false, 0, 0);
+
+        var cubeVertexIndices = [
+          0,  1,  2,   // Top
+          3,  4,  5,   // Bottom
+          6,  7,  8,   // Right
+          9,  10, 11,  // Left
+        ];
+        var cubeVerticesIndexBuffer = context.gl.createBuffer();
+        context.gl.bindBuffer(context.gl.ELEMENT_ARRAY_BUFFER,
+                              cubeVerticesIndexBuffer);
+        context.gl.bufferData(context.gl.ELEMENT_ARRAY_BUFFER,
+                              new Uint16Array(cubeVertexIndices),
+                              context.gl.STATIC_DRAW);
+
+        // Create normals
+        var vertexNormals = [
+          0, 1, -1/Math.sqrt(2),
+          0, 1, -1/Math.sqrt(2),
+          0, 1, -1/Math.sqrt(2),
+
+          0, -1, -1/Math.sqrt(2),
+          0, -1, -1/Math.sqrt(2),
+          0, -1, -1/Math.sqrt(2),
+
+          1, 0, 1/Math.sqrt(2),
+          1, 0, 1/Math.sqrt(2),
+          1, 0, 1/Math.sqrt(2),
+
+          -1, 0, 1/Math.sqrt(2),
+          -1, 0, 1/Math.sqrt(2),
+          -1, 0, 1/Math.sqrt(2),
+        ]
+
+        var vertexNormalAttribute = context.gl.getAttribLocation(render.shaderProgram, 'aVertexNormal');
+        context.gl.enableVertexAttribArray(vertexNormalAttribute);
+
+        var cubeVerticesNormalBuffer = context.gl.createBuffer();
+        context.gl.bindBuffer(context.gl.ARRAY_BUFFER, cubeVerticesNormalBuffer);
+        context.gl.bufferData(context.gl.ARRAY_BUFFER, new Float32Array(vertexNormals), context.gl.STATIC_DRAW);
+        context.gl.vertexAttribPointer(vertexNormalAttribute, 3, context.gl.FLOAT, false, 0, 0);
+      }
+
+      function initSize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        context.gl.viewport(0, 0, canvas.width, canvas.height);
+
+        // Define the prespective
+        var perspectiveMatrix = mat4.perspective(mat4.create(),
+                                                 Math.PI*2/8,
+                                                 canvas.width/canvas.height,
+                                                 DISTANCE-Z_SPREAD*2,
+                                                 DISTANCE+Z_SPREAD*2);
+        var pUniform = context.gl.getUniformLocation(render.shaderProgram, 'uPMatrix');
+        context.gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspectiveMatrix));
+      }
+
+
+      /*
+        Set up objects
+      */
+      function initObjects() {
+        objectState.objects = [];
+
+        var width = canvas.width*SIZE/canvas.height;
+        for (var i = 0 ; i < ELEMENT_COUNT ; i++) {
+          var x = Math.random()*width-width/2;
+          var y = Math.random()*SIZE-SIZE/2;
+          var z = Math.random()*Z_SPREAD-Z_SPREAD/2-DISTANCE;
+          z += 0.3*Math.max(Z_SPREAD-Math.abs(x), 0);
+          objectState.objects[i] = {
+            translation: {
+              position: vec3.fromValues(x, y, z),
+              speed: (Math.random()+1)/7500.0,
+              shift: Math.random()*2*Math.PI,
+              shiftSpeed: Math.random()-0.5,
+            },
+            rotation: {
+              base: quat.setAxisAngle(quat.create(),
+                                      Math.random()*2*Math.PI,
+                                      vec3.normalize(vec3.create(),
+                                                     vec3.fromValues(
+                                                        Math.random()-0.5,
+                                                        Math.random()-0.5,
+                                                        Math.random()-0.5))),
+              angle: Math.random()*2*Math.PI,
+              speed: (Math.random()+2)/15000.0,
+              vector: vec3.normalize(vec3.create(), vec3.fromValues(
+                       Math.random()-0.5,
+                       Math.random()-0.5,
+                       Math.random()-0.5))
+            }
+          }
+        }
+      }
+
+      function initText() {
+        var textElement = document.getElementById('text');
+        text.className = 'on';
+      }
+
+      /*
+        Drawing
+      */
+      function drawScene() {
+        // Clear draw surface
+        context.gl.clear(context.gl.COLOR_BUFFER_BIT | context.gl.DEPTH_BUFFER_BIT);
+
+        // Calculate temporal shift
+        var currentTime = (new Date).getTime();
+        var delta = currentTime - (objectState.lastCubeUpdateTime || (new Date).getTime());
+        objectState.lastCubeUpdateTime = currentTime;
+
+        // Draw
+        for (var i = 0 ; i < objectState.objects.length ; i++) {
+          var currentObject = objectState.objects[i];
+
+          // Calculate object position
+          var objectMatrix = mat4.create();
+          var rotation = quat.setAxisAngle(currentObject.rotation.base,
+                                           currentObject.rotation.vector,
+                                           currentObject.rotation.angle);
+          var shift = vec3.fromValues(
+            currentObject.translation.shiftSpeed*Math.sin(currentObject.translation.position[1]
+                                                          +currentObject.translation.shift),
+            0,
+            currentObject.translation.shiftSpeed*Math.cos(currentObject.translation.position[1]
+                                                          +currentObject.translation.shift)
+          );
+          var position = vec3.add(vec3.create(), shift, currentObject.translation.position)
+          mat4.fromRotationTranslation(objectMatrix, rotation, position);
+          var normalMatrix = mat4.create();
+          mat4.invert(normalMatrix, objectMatrix);
+          mat4.transpose(normalMatrix, normalMatrix);
+
+          // Render object
+          context.gl.uniformMatrix4fv(render.mvUniform, false, new Float32Array(objectMatrix));
+          context.gl.uniformMatrix4fv(render.nUniform, false, new Float32Array(normalMatrix));
+          context.gl.drawElements(context.gl.TRIANGLES, 12, context.gl.UNSIGNED_SHORT, 0);
+
+          // Update object
+          currentObject.rotation.angle = (currentObject.rotation.angle +
+                                          currentObject.rotation.speed*delta) % (2*Math.PI);
+          currentObject.translation.position[1] = currentObject.translation.position[1] -
+                                                  currentObject.translation.speed*delta;
+          if (currentObject.translation.position[1] < -SIZE/2) {
+            currentObject.translation.position[1] = (currentObject.translation.position[1]%SIZE) + SIZE;
+          }
+        }
+      }
+
+      /*
+        Running
+      */
+      function start() {
+        initContext();
+        initRender();
+        initSize();
+        initObjects();
+        initText();
+        drawScene();
+        setInterval(drawScene, 1000/FPS);
+
+        window.onresize = initSize;
+
+        // Clear error
+        document.getElementById('error-message').textContent = '';
+      }
+
+      window.onload = function onload() {
+        start();
+      };
+    </script>
+
+    <script id="shader-fs" type="x-shader/x-fragment">
+      varying mediump vec3 vLighting;
+
+      void main(void) {
+        gl_FragColor = vec4(vLighting, 1.0);
+      }
+    </script>
+
+    <script id="shader-vs" type="x-shader/x-vertex">
+      attribute mediump vec3 aVertexNormal;
+      attribute vec3 aVertexPosition;
+
+      uniform mediump mat4 uNormalMatrix;
+      uniform mat4 uMVMatrix;
+      uniform mat4 uPMatrix;
+
+      varying mediump vec3 vLighting;
+
+      void main(void) {
+        // Position
+        vec4 mvPosition = uMVMatrix * vec4(aVertexPosition, 1.0);
+        gl_Position = uPMatrix * mvPosition;
+
+        // Environment
+        mediump vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
+        mediump vec3 uPointLightingLocation = vec3(0, 0, -45);
+        mediump vec3 lightVector = uPointLightingLocation - mvPosition.xyz;
+        mediump float lightDistance = length(lightVector);
+        mediump vec3 lightDirection = normalize(lightVector);
+        mediump vec3 eyeDirection = normalize(vec3(0,0,5));
+
+        // Ambient lighting
+        mediump vec3 ambientLightColor = normalize(vec3(0.9, 0.8, 0.4))*1.5;
+        mediump float ambientLuminance = 10.0;
+
+        // Directional lighting
+        mediump vec3 directionalLightColor = normalize(vec3(0.9, 0.8, 0.4))*500.0;
+        mediump float directionalLuminance = max(dot(transformedNormal.xyz, lightDirection), 0.0);
+
+        // Specular lighting
+        mediump vec3 specularLightColor = normalize(vec3(0.9, 0.85, 0.6))*300.0;
+        mediump vec3 reflectionDirection = normalize(reflect(-lightDirection,
+                                                             normalize(transformedNormal.xyz)));
+        mediump float specularLuminance = pow(max(dot(reflectionDirection, eyeDirection), 0.0), 20.0);
+
+        vLighting = (ambientLightColor * ambientLuminance +
+                      directionalLightColor * directionalLuminance +
+                      specularLightColor * specularLuminance
+                    )/(lightDistance*lightDistance);
+      }
+    </script>
+  </head>
+  <body >
+    <div id="error">
+      <span id="error-message">JavaScript and Canvas not available,
+                               but I like you anyways <3</span>
+    </div>
+    <div id="text">
+      <span>Valaistua joulua</span>
+    </div>
+    <canvas id="canvas" />
+  </body>
+</html>

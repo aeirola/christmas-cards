@@ -1,0 +1,14 @@
+sudo: false
+language: node_js
+install: true
+script: true
+deploy:
+  provider: s3
+  access_key_id: AKIAISYI7G5NMM6GCF6Q
+  secret_access_key:
+    secure: mex0lqoF61R6RlvB3UiCezgcPkXWgg2mrCDVKcb3tEPbzLMxkS5GgAajDg3pNcYHPXGs5VpjBbmvhLbsnhhCWwyvxreQmbK8LbvqzTCTO4MfqqDXJewVILg50VzQ9BMqRIWw8f/aZwmraSUTA9haBfibhFpHGGTjHex81v+L3og=
+  bucket: joul.aeirola.iki.fi
+  region: eu-central-1
+  acl: public_read
+  on:
+    repo: aeirola/christmas-cards

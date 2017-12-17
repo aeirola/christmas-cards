@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>2017</title>
+
+        <style>
+            html, body {
+                margin: 0;
+                width: 100%;
+                height: 100%;
+                background: rgb(38, 38, 39);
+                mix-blend-mode: color-dodge;
+                overflow: hidden;
+            }
+
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            #container {
+                position: relative;
+                width: 150vmin;
+                height: 150vmin;
+                max-width: 600px;
+                max-height: 600px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                mix-blend-mode: color-dodge;
+            }
+
+            .blob {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                mix-blend-mode: color-dodge;
+            }
+
+            @keyframes rotate {
+                from {
+                    transform: rotate(0turn);
+                    transform-origin: 20% 72%;
+                }
+                to {
+                    transform: rotate(1turn);
+                    transform-origin: 75% 35%;
+                }
+            }
+
+            .blob:nth-child(1) {
+                animation: 3.7s ease-in-out infinite alternate rotate;
+                background-image: radial-gradient(circle at center,
+                    rgba(235, 65, 22, 0.904) 5%,
+                    rgba(0, 0, 0, 0) 70%);
+            }
+            .blob:nth-child(2) {
+                animation: 5.9s ease-in-out infinite alternate rotate;
+                background-image: radial-gradient(circle at center,
+                    rgba(201, 95, 25, 0.904) 5%,
+                    rgba(0, 0, 0, 0) 70%);
+            }
+            .blob:nth-child(3) {
+                animation: 7.1s ease-in-out infinite alternate rotate;
+                background-image: radial-gradient(circle at center,
+                    rgba(199, 159, 49, 0.863) 5%,
+                    rgba(0, 0, 0, 0) 70%);
+            }
+
+            .blob:hover {
+                animation-duration: 2s;
+            }
+
+            .text {
+                color: rgb(119, 116, 116);
+                mix-blend-mode: color-dodge;
+                padding-top: 70%;
+                text-shadow: 0 0 5vmin rgba(161, 161, 161, 0.637);
+
+                text-align: center;
+                font-family: sans-serif;
+                font-weight: bold;
+                letter-spacing: 2pt;
+                font-size: 8vmin;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="container">
+            <div class="text">
+                Lämpöisää joulua
+            </div>
+
+            <!-- Do it in style -->
+            <div class="blob"></div><div class="blob"></div><div class="blob"></div>
+        </div>
+    </body>
+</html>

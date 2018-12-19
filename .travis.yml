@@ -4,9 +4,9 @@ install: true
 script: true
 deploy:
   provider: s3
-  access_key_id: AKIAISYI7G5NMM6GCF6Q
+  access_key_id: AKIAJJN6T6DFEH6COLCA
   secret_access_key:
-    secure: mex0lqoF61R6RlvB3UiCezgcPkXWgg2mrCDVKcb3tEPbzLMxkS5GgAajDg3pNcYHPXGs5VpjBbmvhLbsnhhCWwyvxreQmbK8LbvqzTCTO4MfqqDXJewVILg50VzQ9BMqRIWw8f/aZwmraSUTA9haBfibhFpHGGTjHex81v+L3og=
+    secure: vG+psKyzssoSVU3XU+lE2n5Dfyx3ygA3bWLZQXPIQVnIIHzJjFjOV7rvWBJUatXO6ohggy18udFhbvArtCxvcDTCdOBeEgIdcm9JNKPv+pk4/tCrxn1Pix4axcKSlsOEqyNYqjEynybGkVWKlR1gXe1Kcu4+cEw3L6+Rzz1aEZ0=
   bucket: joul.aeirola.iki.fi
   region: eu-central-1
   acl: public_read
